@@ -7,6 +7,7 @@ import socket
 import sys
 import threading
 import warnings
+import time
 
 try:
     import ssl
@@ -414,6 +415,7 @@ class Connection(object):
             'port': self.port,
             'db': self.db,
         }
+        self.last_used = None
         self._connect_callbacks = []
 
     def __repr__(self):
@@ -845,7 +847,7 @@ class ConnectionPool(object):
 
         return cls(**kwargs)
 
-    def __init__(self, connection_class=Connection, max_connections=None,
+    def __init__(self, connection_class=Connection, max_connections=None, reap_timeout=10,
                  **connection_kwargs):
         """
         Create a connection pool. If max_connections is set, then this
@@ -864,6 +866,7 @@ class ConnectionPool(object):
         self.connection_class = connection_class
         self.connection_kwargs = connection_kwargs
         self.max_connections = max_connections
+        self.reap_timeout = reap_timeout
 
         self.reset()
 
@@ -895,6 +898,7 @@ class ConnectionPool(object):
         self._checkpid()
         try:
             connection = self._available_connections.pop()
+            connection.last_used = int(time.time())
         except IndexError:
             connection = self.make_connection()
         self._in_use_connections.add(connection)
@@ -912,8 +916,17 @@ class ConnectionPool(object):
         self._checkpid()
         if connection.pid != self.pid:
             return
+        self.trim_connections()
         self._in_use_connections.remove(connection)
         self._available_connections.append(connection)
+    
+    def trim_connections(self):
+        current_time = int(time.time())
+        for index, conn in enumerate(self._available_connections):
+            if conn.last_used < (current_time - self.reap_timeout): 
+                del self._available_connections[index]
+                conn.disconnect()
+                self._created_connections -= 1
 
     def disconnect(self):
         "Disconnects all connections in the pool"

@@ -67,6 +67,7 @@ class Token(object):
     hard-coded arguments are wrapped in this class so we know not to apply
     and encoding rules on them.
     """
+
     def __init__(self, value):
         if isinstance(value, Token):
             value = value.value
@@ -103,6 +104,7 @@ class BaseParser(object):
 
 
 class SocketBuffer(object):
+
     def __init__(self, socket, socket_read_size):
         self._sock = socket
         self.socket_read_size = socket_read_size
@@ -284,6 +286,7 @@ class PythonParser(BaseParser):
 
 class HiredisParser(BaseParser):
     "Parser class for connections using Hiredis"
+
     def __init__(self, socket_read_size):
         if not HIREDIS_AVAILABLE:
             raise RedisError("Hiredis is not installed")
@@ -847,8 +850,8 @@ class ConnectionPool(object):
 
         return cls(**kwargs)
 
-    def __init__(self, connection_class=Connection, max_connections=None, reap_timeout=10,
-                 **connection_kwargs):
+    def __init__(self, connection_class=Connection, max_connections=None,
+                 reap_timeout=10, **connection_kwargs):
         """
         Create a connection pool. If max_connections is set, then this
         object raises redis.ConnectionError when the pool's limit is reached.
@@ -919,11 +922,11 @@ class ConnectionPool(object):
         self.trim_connections()
         self._in_use_connections.remove(connection)
         self._available_connections.append(connection)
-    
+
     def trim_connections(self):
         current_time = int(time.time())
         for index, conn in enumerate(self._available_connections):
-            if conn.last_used < (current_time - self.reap_timeout): 
+            if conn.last_used < (current_time - self.reap_timeout):
                 del self._available_connections[index]
                 conn.disconnect()
                 self._created_connections -= 1
@@ -969,6 +972,7 @@ class BlockingConnectionPool(ConnectionPool):
         # not available.
         >>> pool = BlockingConnectionPool(timeout=5)
     """
+
     def __init__(self, max_connections=50, timeout=20,
                  connection_class=Connection, queue_class=LifoQueue,
                  **connection_kwargs):
